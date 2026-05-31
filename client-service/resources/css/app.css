@@ -1,0 +1,213 @@
+@import 'tailwindcss';
+
+@import 'tw-animate-css';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-sans:
+        Instrument Sans, ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+    --font-display:
+        'Bricolage Grotesque', 'Instrument Sans', ui-sans-serif, system-ui,
+        sans-serif;
+
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+
+    /* Soft enterprise card elevation — used as `shadow-card` */
+    --shadow-card:
+        0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+
+    --color-sidebar: var(--sidebar-background);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/*
+  The default border color has changed to `currentColor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentColor);
+    }
+}
+
+@layer utilities {
+    body,
+    html {
+        --font-sans:
+            'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+            'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+            'Noto Color Emoji';
+    }
+}
+
+/*
+  DriveNow ERP theme — warm neutral surfaces with an amber (#F59E0B) brand
+  accent. Primary actions resolve to amber so reka-ui Buttons stay on-brand.
+*/
+:root {
+    --background: hsl(40 30% 98%);
+    --foreground: hsl(222 47% 11%);
+    --card: hsl(0 0% 100%);
+    --card-foreground: hsl(222 47% 11%);
+    --popover: hsl(0 0% 100%);
+    --popover-foreground: hsl(222 47% 11%);
+    --primary: hsl(38 92% 50%);
+    --primary-foreground: hsl(26 80% 14%);
+    --secondary: hsl(40 16% 94%);
+    --secondary-foreground: hsl(222 47% 11%);
+    --muted: hsl(40 16% 95.5%);
+    --muted-foreground: hsl(220 9% 46%);
+    --accent: hsl(40 18% 94%);
+    --accent-foreground: hsl(222 47% 11%);
+    --destructive: hsl(0 84.2% 60.2%);
+    --destructive-foreground: hsl(0 0% 98%);
+    --border: hsl(40 12% 90%);
+    --input: hsl(40 12% 88%);
+    --ring: hsl(38 92% 50%);
+    --chart-1: hsl(38 92% 50%);
+    --chart-2: hsl(173 58% 39%);
+    --chart-3: hsl(217 91% 60%);
+    --chart-4: hsl(27 87% 67%);
+    --chart-5: hsl(160 60% 45%);
+    --radius: 0.6rem;
+    --sidebar-background: hsl(222 47% 11%);
+    --sidebar-foreground: hsl(215 20% 75%);
+    --sidebar-primary: hsl(38 92% 50%);
+    --sidebar-primary-foreground: hsl(26 80% 14%);
+    --sidebar-accent: hsl(217 33% 17%);
+    --sidebar-accent-foreground: hsl(0 0% 98%);
+    --sidebar-border: hsl(217 33% 20%);
+    --sidebar-ring: hsl(38 92% 50%);
+    --sidebar: hsl(222 47% 11%);
+}
+
+.dark {
+    --background: hsl(222 47% 7%);
+    --foreground: hsl(0 0% 98%);
+    --card: hsl(222 40% 10%);
+    --card-foreground: hsl(0 0% 98%);
+    --popover: hsl(222 40% 10%);
+    --popover-foreground: hsl(0 0% 98%);
+    --primary: hsl(38 92% 50%);
+    --primary-foreground: hsl(26 80% 12%);
+    --secondary: hsl(217 33% 15%);
+    --secondary-foreground: hsl(0 0% 98%);
+    --muted: hsl(217 33% 15%);
+    --muted-foreground: hsl(215 16% 60%);
+    --accent: hsl(217 33% 16%);
+    --accent-foreground: hsl(0 0% 98%);
+    --destructive: hsl(0 72% 51%);
+    --destructive-foreground: hsl(0 0% 98%);
+    --border: hsl(217 33% 18%);
+    --input: hsl(217 33% 20%);
+    --ring: hsl(38 92% 50%);
+    --chart-1: hsl(38 92% 50%);
+    --chart-2: hsl(173 58% 45%);
+    --chart-3: hsl(217 91% 60%);
+    --chart-4: hsl(27 87% 67%);
+    --chart-5: hsl(160 60% 45%);
+    --sidebar-background: hsl(222 47% 9%);
+    --sidebar-foreground: hsl(215 20% 72%);
+    --sidebar-primary: hsl(38 92% 50%);
+    --sidebar-primary-foreground: hsl(26 80% 12%);
+    --sidebar-accent: hsl(217 33% 15%);
+    --sidebar-accent-foreground: hsl(0 0% 98%);
+    --sidebar-border: hsl(217 33% 16%);
+    --sidebar-ring: hsl(38 92% 50%);
+    --sidebar: hsl(222 47% 9%);
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+/*
+  Status / tier badges — fill-style only (see DESIGN_STANDARDS §8).
+  Base `.badge` sets shape + sizing; the colour modifiers set the fill.
+*/
+@layer components {
+    .badge {
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold;
+    }
+
+    .badge-available {
+        @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400;
+    }
+
+    .badge-rented {
+        @apply bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400;
+    }
+
+    .badge-reserved {
+        @apply bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400;
+    }
+
+    .badge-maintenance {
+        @apply bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400;
+    }
+
+    .badge-inactive {
+        @apply bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400;
+    }
+}
