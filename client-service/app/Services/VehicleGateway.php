@@ -35,7 +35,9 @@ class VehicleGateway
 
             if ($base) {
                 try {
-                    $response = Http::timeout(2)->acceptJson()->get("{$base}/api/vehicles");
+                    $response = Http::timeout(2)->acceptJson()
+                        ->withHeaders(['X-Service-Token' => (string) config('services.service_token')])
+                        ->get("{$base}/api/v1/vehicles");
 
                     if ($response->successful()) {
                         return collect($response->json('data') ?? [])->all();

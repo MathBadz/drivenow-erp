@@ -2,6 +2,22 @@
 
 return [
 
+    'jwt_secret' => env('JWT_SECRET'),
+    'service_token' => env('SERVICE_TOKEN'),
+
+    // Public (browser-facing) origins for cross-service navigation links.
+    // localhost ports for dev; override per service for a gateway/public deploy.
+    'public' => [
+        'auth' => env('AUTH_PUBLIC_URL', 'http://localhost:8001'),
+        'fleet' => env('FLEET_PUBLIC_URL', 'http://localhost:8002'),
+        'rental' => env('RENTAL_PUBLIC_URL', 'http://localhost:8003'),
+        'crm' => env('CRM_PUBLIC_URL', 'http://localhost:8004'),
+        'billing' => env('BILLING_PUBLIC_URL', 'http://localhost:8005'),
+        'maintenance' => env('MAINTENANCE_PUBLIC_URL', 'http://localhost:8006'),
+        'analytics' => env('ANALYTICS_PUBLIC_URL', 'http://localhost:8007'),
+        'client' => env('CLIENT_PUBLIC_URL', 'http://localhost:8008'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services
@@ -38,4 +54,6 @@ return [
     'auth' => ['url' => env('AUTH_SERVICE_URL', 'http://localhost:8001')],
     'fleet' => ['url' => env('FLEET_SERVICE_URL', 'http://localhost:8002')],
     'rental' => ['url' => env('RENTAL_SERVICE_URL', 'http://localhost:8003')],
+    'crm' => ['url' => env('CRM_SERVICE_URL', 'http://localhost:8004')],
+    'maintenance' => ['url' => env('MAINTENANCE_SERVICE_URL', 'http://localhost:8006')],
 ];

@@ -22,7 +22,9 @@ class RentalGateway
         }
 
         try {
-            $response = Http::timeout(2)->acceptJson()->get("{$base}/api/rentals");
+            $response = Http::timeout(2)->acceptJson()
+                ->withHeaders(['X-Service-Token' => (string) config('services.service_token')])
+                ->get("{$base}/api/v1/rentals");
 
             if ($response->successful()) {
                 return collect($response->json('data') ?? [])

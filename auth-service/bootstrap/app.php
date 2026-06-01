@@ -17,7 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+        $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'drivenow_token']);
+
+        // Behind the gateway/reverse proxy — honour X-Forwarded-* so client IP,
+        // host and scheme (for throttling, logging, URL generation) are real.
+        $middleware->trustProxies(at: '*');
 
         $middleware->web(append: [
             HandleAppearance::class,

@@ -211,3 +211,46 @@
         @apply bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400;
     }
 }
+
+/* --- Global animation layer (consistent across all DriveNow services) --- */
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shimmer {
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+@layer components {
+    /* Shimmer skeleton placeholder for loading states. */
+    .skeleton {
+        @apply relative overflow-hidden rounded-md bg-muted;
+    }
+    .skeleton::after {
+        position: absolute;
+        inset: 0;
+        content: '';
+        transform: translateX(-100%);
+        background-image: linear-gradient(
+            90deg,
+            transparent,
+            rgb(148 163 184 / 0.15),
+            transparent
+        );
+        animation: shimmer 1.6s infinite;
+    }
+
+    /* One-shot entrance used for cards / page sections. */
+    .animate-fade-up {
+        animation: fadeUp 0.5s ease-out both;
+    }
+}

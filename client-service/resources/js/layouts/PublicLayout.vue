@@ -28,6 +28,7 @@ function toggleTheme() {
 }
 
 const mobileOpen = ref(false);
+const confirmingLogout = ref(false);
 
 const currentPath = computed(() => {
     try {
@@ -52,7 +53,8 @@ const year = new Date().getFullYear();
         <header class="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
             <div class="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
                 <Link href="/" class="flex items-center gap-2.5">
-                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-amber-950 shadow-sm">
+                    <img v-if="settings?.logo_url" :src="settings.logo_url" alt="logo" class="h-9 w-9 rounded-xl object-contain" />
+                    <span v-else class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-amber-950 shadow-sm">
                         <Car class="h-5 w-5" />
                     </span>
                     <span class="font-display text-lg font-bold tracking-tight text-foreground">{{ businessName }}</span>
@@ -80,9 +82,9 @@ const year = new Date().getFullYear();
                         <Link href="/dashboard" class="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:flex">
                             <LayoutDashboard class="h-4 w-4" /> My Trips
                         </Link>
-                        <Link href="/logout" method="post" as="button" class="hidden items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted sm:flex">
+                        <button type="button" class="hidden items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted sm:flex" @click="confirmingLogout = true">
                             <LogOut class="h-4 w-4" /> Sign out
-                        </Link>
+                        </button>
                     </template>
                     <template v-else>
                         <Link href="/login" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:block">Sign in</Link>
@@ -110,7 +112,17 @@ const year = new Date().getFullYear();
 
         <!-- Page -->
         <main class="flex-1">
-            <slot />
+            <Transition
+                mode="out-in"
+                enter-active-class="transition duration-300 ease-out"
+                enter-from-class="opacity-0 translate-y-1.5"
+                leave-active-class="transition duration-100 ease-in"
+                leave-to-class="opacity-0"
+            >
+                <div :key="currentPath">
+                    <slot />
+                </div>
+            </Transition>
         </main>
 
         <!-- Footer -->
@@ -154,6 +166,28 @@ const year = new Date().getFullYear();
                 </div>
             </div>
         </footer>
+
+        <!-- Sign-out confirmation -->
+        <Teleport to="body">
+            <Transition enter-active-class="transition ease-out duration-150" enter-from-class="opacity-0" leave-active-class="transition ease-in duration-100" leave-to-class="opacity-0">
+                <div v-if="confirmingLogout" class="fixed inset-0 z-[80] flex items-center justify-center p-4" @keydown.esc.window="confirmingLogout = false">
+                    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="confirmingLogout = false" />
+                    <div class="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl" role="dialog" aria-modal="true">
+                        <div class="flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                            <LogOut class="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <h2 class="font-display mt-4 text-base font-semibold text-foreground">Sign out?</h2>
+                        <p class="mt-1 text-sm text-muted-foreground">You'll need to sign in again to access your account.</p>
+                        <div class="mt-5 flex items-center justify-end gap-3">
+                            <button type="button" class="inline-flex h-9 items-center rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted" @click="confirmingLogout = false">Cancel</button>
+                            <Link href="/logout" method="post" as="button" class="inline-flex h-9 items-center gap-2 rounded-lg bg-amber-500 px-4 text-sm font-semibold text-amber-950 transition-colors hover:bg-amber-400">
+                                <LogOut class="h-4 w-4" /> Sign out
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
 
         <Toaster rich-colors position="top-right" />
     </div>

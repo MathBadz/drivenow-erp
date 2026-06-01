@@ -1,0 +1,217 @@
+# =============================================================================
+# DriveNow ERP — full-stack orchestration
+# -----------------------------------------------------------------------------
+# Brings up all 8 Laravel microservices + one PostgreSQL (8 isolated databases)
+# + the nginx API gateway on a single private network.
+#
+#   Services are published on localhost:8001-8008 (SSO works because the
+#   drivenow_token cookie is shared across ports on the `localhost` host).
+#   Server-to-server calls use the internal Docker DNS names (auth-service, …).
+#   The gateway on :8080 demonstrates the single public entry point.
+#
+# First run:
+#   1. cp .env.example .env   (then fill secrets — see scripts/generate-secrets)
+#   2. APP_AUTO_SEED=true docker compose up -d --build   # seeds demo data once
+#   3. subsequent runs:        docker compose up -d
+# =============================================================================
+
+name: drivenow
+
+# ---- shared environment for the 8 Laravel services --------------------------
+x-erp-env: &erp-env
+  APP_ENV: production
+  APP_DEBUG: ${APP_DEBUG:-false}
+  APP_LOCALE: en
+  LOG_CHANNEL: stderr
+  DB_CONNECTION: pgsql
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_USERNAME: drivenow
+  DB_PASSWORD: drivenow
+  SESSION_DRIVER: database
+  # Set to the shared parent domain (e.g. .example.com) for cross-subdomain SSO
+  # behind the gateway. Empty = host-only cookie (correct for localhost:800X).
+  SESSION_DOMAIN: ${SESSION_DOMAIN:-}
+  CACHE_STORE: database
+  QUEUE_CONNECTION: database
+  # Shared across every service (must be identical) — SSO JWT + service token.
+  JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+  SERVICE_TOKEN: ${SERVICE_TOKEN:?set SERVICE_TOKEN in .env}
+  # Internal service-to-service base URLs (server-side HTTP calls).
+  AUTH_SERVICE_URL: http://auth-service
+  FLEET_SERVICE_URL: http://fleet-service
+  RENTAL_SERVICE_URL: http://rental-service
+  CRM_SERVICE_URL: http://crm-service
+  BILLING_SERVICE_URL: http://billing-service
+  MAINTENANCE_SERVICE_URL: http://maintenance-service
+  ANALYTICS_SERVICE_URL: http://analytics-service
+  CLIENT_SERVICE_URL: http://client-service
+  # Public (browser-facing) origins for cross-service nav links. Default to the
+  # published localhost ports; override per service in .env for a public deploy
+  # (e.g. AUTH_PUBLIC_URL=https://auth.example.com).
+  AUTH_PUBLIC_URL: ${AUTH_PUBLIC_URL:-http://localhost:8001}
+  FLEET_PUBLIC_URL: ${FLEET_PUBLIC_URL:-http://localhost:8002}
+  RENTAL_PUBLIC_URL: ${RENTAL_PUBLIC_URL:-http://localhost:8003}
+  CRM_PUBLIC_URL: ${CRM_PUBLIC_URL:-http://localhost:8004}
+  BILLING_PUBLIC_URL: ${BILLING_PUBLIC_URL:-http://localhost:8005}
+  MAINTENANCE_PUBLIC_URL: ${MAINTENANCE_PUBLIC_URL:-http://localhost:8006}
+  ANALYTICS_PUBLIC_URL: ${ANALYTICS_PUBLIC_URL:-http://localhost:8007}
+  CLIENT_PUBLIC_URL: ${CLIENT_PUBLIC_URL:-http://localhost:8008}
+  # First-boot demo data (set APP_AUTO_SEED=true in .env for the initial up).
+  APP_AUTO_SEED: ${APP_AUTO_SEED:-false}
+
+x-erp-svc: &erp-svc
+  restart: unless-stopped
+  networks: [drivenow]
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  # ---- Database: one server, one isolated database per service --------------
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: drivenow
+      POSTGRES_PASSWORD: drivenow
+      POSTGRES_DB: drivenow_auth
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/10-init-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drivenow -d drivenow_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [drivenow]
+
+  # ---- Operations Hub / identity provider ----------------------------------
+  auth-service:
+    <<: *erp-svc
+    build: ./auth-service
+    image: drivenow/auth-service
+    environment:
+      <<: *erp-env
+      APP_NAME: DriveNow Operations Hub
+      APP_KEY: ${APPKEY_AUTH:?set APPKEY_AUTH in .env}
+      APP_URL: http://localhost:8001
+      ASSET_URL: http://localhost:8001
+      DB_DATABASE: drivenow_auth
+    ports: ["8001:80"]
+
+  # ---- ERP back-office services --------------------------------------------
+  fleet-service:
+    <<: *erp-svc
+    build: ./fleet-service
+    image: drivenow/fleet-service
+    environment:
+      <<: *erp-env
+      APP_NAME: DriveNow Fleet
+      APP_KEY: ${APPKEY_FLEET:?set APPKEY_FLEET in .env}
+      APP_URL: http://localhost:8002
+      ASSET_URL: http://localhost:8002
+      DB_DATABASE: drivenow_fleet
+    ports: ["8002:80"]
+
+  rental-service:
+    <<: *erp-svc
+    build: ./rental-service
+    image: drivenow/rental-service
+    environment:
+      <<: *erp-env
+      APP_NAME: DriveNow Rentals
+      APP_KEY: ${APPKEY_RENTAL:?set APPKEY_RENTAL in .env}
+      APP_URL: http://localhost:8003
+      ASSET_URL: http://localhost:8003
+      DB_DATABASE: drivenow_rental
+    ports: ["8003:80"]
+
+  crm-service:
+    <<: *erp-svc
+    build: ./crm-service
+    image: drivenow/crm-service
+    environment:
+      <<: *erp-env
+      APP_NAME: DriveNow CRM
+      APP_KEY: ${APPKEY_CRM:?set APPKEY_CRM in .env}
+      APP_URL: http://localhost:8004
+      ASSET_URL: http://localhost:8004
+      DB_DATABASE: drivenow_crm
+    ports: ["8004:80"]
+
+  billing-service:
+    <<: *erp-svc
+    build: ./billing-service
+    image: drivenow/billing-service
+    environment:
+      <<: *erp-env
+      APP_NAME: DriveNow Billing
+      APP_KEY: ${APPKEY_BILLING:?set APPKEY_BILLING in .env}
+      APP_URL: http://localhost:8005
+      ASSET_URL: http://localhost:8005
+      DB_DATABASE: drivenow_billing
+    ports: ["8005:80"]
+
+  maintenance-service:
+    <<: *erp-svc
+    build: ./maintenance-service
+    image: drivenow/maintenance-service
+    environment:
+      <<: *erp-env
+      APP_NAME: DriveNow Maintenance
+      APP_KEY: ${APPKEY_MAINTENANCE:?set APPKEY_MAINTENANCE in .env}
+      APP_URL: http://localhost:8006
+      ASSET_URL: http://localhost:8006
+      DB_DATABASE: drivenow_maintenance
+    ports: ["8006:80"]
+
+  analytics-service:
+    <<: *erp-svc
+    build: ./analytics-service
+    image: drivenow/analytics-service
+    environment:
+      <<: *erp-env
+      APP_NAME: DriveNow Analytics
+      APP_KEY: ${APPKEY_ANALYTICS:?set APPKEY_ANALYTICS in .env}
+      APP_URL: http://localhost:8007
+      ASSET_URL: http://localhost:8007
+      DB_DATABASE: drivenow_analytics
+    ports: ["8007:80"]
+
+  # ---- Public customer portal (own auth realm) -----------------------------
+  client-service:
+    <<: *erp-svc
+    build: ./client-service
+    image: drivenow/client-service
+    environment:
+      <<: *erp-env
+      APP_NAME: DriveNow Customer Portal
+      APP_KEY: ${APPKEY_CLIENT:?set APPKEY_CLIENT in .env}
+      APP_URL: http://localhost:8008
+      ASSET_URL: http://localhost:8008
+      DB_DATABASE: drivenow_client
+    ports: ["8008:80"]
+
+  # ---- API Gateway: single public entry point ------------------------------
+  gateway:
+    build: ./gateway
+    image: drivenow/gateway
+    restart: unless-stopped
+    networks: [drivenow]
+    depends_on:
+      - auth-service
+      - fleet-service
+      - rental-service
+      - crm-service
+      - billing-service
+      - maintenance-service
+      - analytics-service
+      - client-service
+    ports: ["8080:80"]
+
+networks:
+  drivenow:
+    driver: bridge
+
+volumes:
+  pgdata:

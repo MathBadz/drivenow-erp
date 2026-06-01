@@ -1,61 +1,78 @@
 /**
- * Shared formatting helpers. Every DriveNow service formats money and dates
- * identically (see DESIGN_STANDARDS §17 — always en-US / USD).
+ * Shared formatting helpers. The currency is driven by the dynamic system
+ * settings broadcast from auth-service (configured at startup + on every
+ * visit by lib/flashToast.ts), so it is NOT hardcoded — change the currency
+ * in the Operations Hub and every service follows.
  */
 
-const currency = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-});
+const locale = 'en-US';
+let currencyCode = 'USD';
+let currencySymbol: string | null = null;
 
-const numberFmt = new Intl.NumberFormat('en-US');
+function buildCurrencyFmt(code: string): Intl.NumberFormat {
+    try {
+        return new Intl.NumberFormat(locale, { style: 'currency', currency: code });
+    } catch {
+        return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' });
+    }
+}
 
-/** Format a numeric value as USD currency, e.g. `1234.5` → `$1,234.50`. */
+// Cached formatters — rebuilt only when the currency changes, not per call.
+const numberFmt = new Intl.NumberFormat(locale);
+const decimalFmt = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+let currencyFmt = buildCurrencyFmt(currencyCode);
+
+/**
+ * Set the active currency from system settings. `code` is the ISO 4217 code
+ * (e.g. 'USD', 'PHP'); `symbol` is the admin-chosen display symbol — when
+ * provided it overrides the locale's default glyph (e.g. show '₱' for PHP).
+ */
+export function configureCurrency(code?: string | null, symbol?: string | null): void {
+    if (code && code.length === 3) {
+        currencyCode = code.toUpperCase();
+        currencyFmt = buildCurrencyFmt(currencyCode);
+    }
+    currencySymbol = symbol && symbol.trim() !== '' ? symbol.trim() : null;
+}
+
+function toSafe(value: number | string | null | undefined): number {
+    const num = typeof value === 'string' ? Number(value) : (value ?? 0);
+    return Number.isFinite(num) ? (num as number) : 0;
+}
+
 export function formatCurrency(value: number | string | null | undefined): string {
-    const num = typeof value === 'string' ? Number(value) : (value ?? 0);
-
-    return currency.format(Number.isFinite(num) ? (num as number) : 0);
+    const safe = toSafe(value);
+    // Honor an explicit admin-configured symbol; otherwise use the ISO format.
+    if (currencySymbol) {
+        return `${currencySymbol}${decimalFmt.format(safe)}`;
+    }
+    return currencyFmt.format(safe);
 }
 
-/** Format an integer/float with thousands separators, e.g. `12000` → `12,000`. */
 export function formatNumber(value: number | string | null | undefined): string {
-    const num = typeof value === 'string' ? Number(value) : (value ?? 0);
-
-    return numberFmt.format(Number.isFinite(num) ? (num as number) : 0);
+    return numberFmt.format(toSafe(value));
 }
 
-/** Format a date string as `Jan 5, 2026`. */
 export function formatDate(value: string | Date | null | undefined): string {
     if (!value) {
         return '—';
     }
-
     const date = value instanceof Date ? value : new Date(value);
-
     if (Number.isNaN(date.getTime())) {
         return '—';
     }
-
-    return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-    });
+    return date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-/** Format a date-time string as `Jan 5, 2026, 2:30 PM`. */
 export function formatDateTime(value: string | Date | null | undefined): string {
     if (!value) {
         return '—';
     }
-
     const date = value instanceof Date ? value : new Date(value);
-
     if (Number.isNaN(date.getTime())) {
         return '—';
     }
-
-    return date.toLocaleString('en-US', {
+    return date.toLocaleString(locale, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',

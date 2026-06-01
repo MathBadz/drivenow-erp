@@ -50,36 +50,35 @@ const features = [
 <template>
     <Head title="Rent a car in Bacolod City" />
 
-    <!-- Hero -->
-    <section class="relative overflow-hidden bg-gradient-to-b from-[#0b1220] via-[#101a2e] to-[#0f172a] text-white">
-        <div class="pointer-events-none absolute -top-24 -left-16 h-96 w-96 rounded-full bg-amber-500/20 blur-3xl" />
+    <!-- Hero (day in light mode, night in dark mode) -->
+    <section class="relative overflow-hidden bg-sky-200 dark:bg-[#0f172a]">
         <CityDriveScene />
 
         <div class="relative mx-auto w-full max-w-7xl px-4 pt-24 pb-48 sm:px-6 lg:px-8 lg:pt-28 lg:pb-56">
-            <div class="max-w-2xl">
-                <span class="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-300">
+            <div class="max-w-2xl motion-safe:animate-[fadeUp_0.6s_ease-out_both]">
+                <span class="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-400/20 px-3 py-1 text-xs font-medium text-amber-800 backdrop-blur-sm dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-300">
                     <Sparkles class="h-3.5 w-3.5" /> {{ businessName }} · Bacolod City
                 </span>
-                <h1 class="font-display mt-6 text-4xl leading-[1.05] font-bold tracking-tight sm:text-5xl lg:text-6xl">
+                <h1 class="font-display mt-6 text-4xl leading-[1.05] font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl dark:text-white">
                     Find your perfect ride for the journey ahead.
                 </h1>
-                <p class="mt-5 max-w-xl text-lg text-slate-300">
+                <p class="mt-5 max-w-xl text-lg text-slate-700 dark:text-slate-300">
                     Affordable, reliable car rentals for tourists, families and businesses across
                     Bacolod City and nearby areas. Book in minutes — drive in moments.
                 </p>
                 <div class="mt-8 flex flex-wrap gap-3">
-                    <Link href="/vehicles" class="inline-flex h-12 items-center gap-2 rounded-xl bg-amber-500 px-6 text-sm font-semibold text-amber-950 shadow-lg shadow-amber-500/20 transition-colors hover:bg-amber-400">
+                    <Link href="/vehicles" class="inline-flex h-12 items-center gap-2 rounded-xl bg-amber-500 px-6 text-sm font-semibold text-amber-950 shadow-lg shadow-amber-500/20 transition-all hover:-translate-y-0.5 hover:bg-amber-400">
                         Browse Cars <ArrowRight class="h-4 w-4" />
                     </Link>
-                    <Link href="/register" class="inline-flex h-12 items-center gap-2 rounded-xl border border-white/15 px-6 text-sm font-semibold text-white transition-colors hover:bg-white/5">
+                    <Link href="/register" class="inline-flex h-12 items-center gap-2 rounded-xl border border-slate-900/15 bg-white/40 px-6 text-sm font-semibold text-slate-900 backdrop-blur-sm transition-colors hover:bg-white/60 dark:border-white/15 dark:bg-transparent dark:text-white dark:hover:bg-white/5">
                         Create Account
                     </Link>
                 </div>
 
                 <dl class="mt-12 grid max-w-lg grid-cols-4 gap-4">
                     <div v-for="s in stats" :key="s.label">
-                        <dt class="font-display text-2xl font-bold text-amber-400">{{ s.value }}</dt>
-                        <dd class="text-[11px] tracking-wide text-slate-400 uppercase">{{ s.label }}</dd>
+                        <dt class="font-display text-2xl font-bold text-amber-600 dark:text-amber-400">{{ s.value }}</dt>
+                        <dd class="text-[11px] tracking-wide text-slate-600 uppercase dark:text-slate-400">{{ s.label }}</dd>
                     </div>
                 </dl>
             </div>

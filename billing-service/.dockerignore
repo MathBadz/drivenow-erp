@@ -1,0 +1,26 @@
+# Build context exclusions — keep images lean and reproducible.
+.git
+.gitignore
+.github
+.idea
+.vscode
+node_modules
+vendor
+public/build
+public/hot
+public/storage
+storage/*.key
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+bootstrap/cache/*.php
+.env
+.env.*
+!.env.example
+tests
+.phpunit.result.cache
+*.log
+Dockerfile
+.dockerignore
+README.md

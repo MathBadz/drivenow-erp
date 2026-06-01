@@ -26,8 +26,8 @@ class Setting extends Model
         'business_description' => 'Reliable, affordable vehicle rentals for Bacolod City and nearby areas.',
         'logo_url' => null,
         'favicon_url' => null,
-        'currency' => 'USD',
-        'currency_symbol' => '$',
+        'currency' => 'PHP',
+        'currency_symbol' => '₱',
         'timezone' => 'Asia/Manila',
     ];
 

@@ -11,7 +11,9 @@ class UpdateVehicleRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        // Only operational staff (admin / front-desk staff) may change fleet
+        // inventory; maintenance and customer roles are read-only here.
+        return in_array($this->user()?->role, ['admin', 'staff'], true);
     }
 
     /**
@@ -36,6 +38,8 @@ class UpdateVehicleRequest extends FormRequest
             'color' => ['nullable', 'string', 'max:30'],
             'mileage' => ['required', 'integer', 'min:0'],
             'image_url' => ['nullable', 'url', 'max:255'],
+            'image' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
+            'remove_image' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }

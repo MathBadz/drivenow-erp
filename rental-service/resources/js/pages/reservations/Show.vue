@@ -83,7 +83,7 @@ const details = computed(() => [
             { title: r.reference, href: `/reservations/${r.id}` },
         ]"
     >
-        <div class="mx-auto flex h-full w-full max-w-4xl flex-1 flex-col gap-6 p-6">
+        <div class="mx-auto flex min-h-full w-full max-w-4xl flex-1 flex-col gap-6 p-6">
             <Link href="/reservations" class="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
                 <ArrowLeft class="h-4 w-4" />
                 Back to reservations

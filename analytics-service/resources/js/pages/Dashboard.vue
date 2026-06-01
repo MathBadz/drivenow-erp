@@ -14,6 +14,7 @@ import { computed } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { formatCurrency, formatNumber } from '@/lib/format';
 import type {
+    AnalyticsMeta,
     Kpis,
     MaintenanceMonthly,
     MonthlyRevenue,
@@ -31,7 +32,16 @@ const props = defineProps<{
     utilization: Utilization;
     retention: Retention;
     paymentMix: PaymentMix;
+    meta: AnalyticsMeta;
 }>();
+
+// Human label for any sibling services that were unreachable when this
+// snapshot was built — those sections show representative figures.
+const degradedLabel = computed(() =>
+    props.meta.degraded
+        .map((s) => ({ rentals: 'Rentals', vehicles: 'Fleet', customers: 'Customers', maintenance: 'Maintenance' })[s] ?? s)
+        .join(', '),
+);
 
 const kpiCards = computed(() => [
     { label: 'Total Revenue', value: formatCurrency(props.kpis.revenue), icon: Banknote, cls: 'text-emerald-500' },
@@ -74,7 +84,7 @@ const paymentSegments = computed(() => [
     <Head title="Analytics Dashboard" />
 
     <AppLayout :breadcrumbs="[{ title: 'Dashboard', href: '/dashboard' }]">
-        <div class="flex h-full flex-1 flex-col gap-6 p-6">
+        <div class="flex min-h-full flex-1 flex-col gap-6 p-6">
             <!-- Hero -->
             <div class="relative overflow-hidden rounded-2xl border border-border bg-[#0f172a] p-6 text-white shadow-card">
                 <div class="pointer-events-none absolute -top-16 -right-10 h-48 w-48 rounded-full bg-amber-500/20 blur-3xl" />
@@ -88,6 +98,15 @@ const paymentSegments = computed(() => [
                         <FileText class="h-4 w-4" /> View Reports
                     </Link>
                 </div>
+            </div>
+
+            <!-- Degraded-data notice (C8): some services were unreachable -->
+            <div
+                v-if="!meta.live"
+                class="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300"
+            >
+                <Wrench class="h-4 w-4 shrink-0" />
+                <span>Showing representative figures for <strong>{{ degradedLabel }}</strong> — those services were unreachable. Numbers will refresh automatically once they are back online.</span>
             </div>
 
             <!-- KPI cards -->

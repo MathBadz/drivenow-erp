@@ -1,0 +1,1169 @@
+openapi: 3.0.3
+
+info:
+  title: DriveNow ERP — Internal Service API
+  version: "1.0.0"
+  description: |-
+    Server-to-server REST API for the **DriveNow ERP** microservices platform.
+
+    All endpoints are versioned under `/api/v1/` and require the shared
+    `X-Service-Token` header (the `SERVICE_TOKEN` environment variable, identical
+    across all services). These are **internal APIs** consumed by sibling services;
+    end-user interactions happen via the Inertia/Vue web routes of each service.
+
+    | Service              | Port | Responsibility                          |
+    |----------------------|------|-----------------------------------------|
+    | auth-service         | 8001 | Global business settings (SSO hub)      |
+    | fleet-service        | 8002 | Vehicle inventory                       |
+    | rental-service       | 8003 | Reservation lifecycle                   |
+    | crm-service          | 8004 | Customer profiles & loyalty             |
+    | billing-service      | 8005 | Invoices & payments                     |
+    | maintenance-service  | 8006 | Vehicle maintenance records             |
+    | analytics-service    | 8007 | Aggregated KPI dashboard                |
+
+    **Authentication:** Every request must carry the `X-Service-Token` header.
+    A missing or incorrect token returns `HTTP 401`.
+
+    **Response envelope:** All endpoints wrap their payload in a `data` key,
+    following the Laravel API Resource convention.
+  contact:
+    name: DriveNow ERP Team
+    email: hello@drivenow.test
+
+servers:
+  - url: http://localhost:8080
+    description: API Gateway — nginx, routes by subdomain (single entry point)
+  - url: http://localhost:8001
+    description: auth-service (direct)
+  - url: http://localhost:8002
+    description: fleet-service (direct)
+  - url: http://localhost:8003
+    description: rental-service (direct)
+  - url: http://localhost:8004
+    description: crm-service (direct)
+  - url: http://localhost:8005
+    description: billing-service (direct)
+  - url: http://localhost:8006
+    description: maintenance-service (direct)
+  - url: http://localhost:8007
+    description: analytics-service (direct)
+
+security:
+  - ServiceToken: []
+
+tags:
+  - name: Settings
+    description: >
+      Global business configuration — served by **auth-service** (:8001).
+      Read by every sibling service on page load and cached for ~5 minutes.
+  - name: Fleet
+    description: >
+      Vehicle inventory — served by **fleet-service** (:8002).
+      Consumed by rental-service, maintenance-service, client-service, and analytics-service.
+  - name: Rentals
+    description: >
+      Reservation data — served by **rental-service** (:8003).
+      Consumed by crm-service (customer history) and analytics-service (KPIs).
+  - name: Customers
+    description: >
+      CRM customer profiles — served by **crm-service** (:8004).
+      Consumed by analytics-service.
+  - name: Billing
+    description: >
+      Invoices and payments — served by **billing-service** (:8005).
+  - name: Maintenance
+    description: >
+      Vehicle maintenance records — served by **maintenance-service** (:8006).
+      Consumed by analytics-service.
+  - name: Analytics
+    description: >
+      Aggregated KPI summary — served by **analytics-service** (:8007).
+      Aggregates fleet, rental, CRM and maintenance data concurrently.
+
+# ============================================================================
+# Reusable components
+# ============================================================================
+components:
+
+  securitySchemes:
+    ServiceToken:
+      type: apiKey
+      in: header
+      name: X-Service-Token
+      description: >
+        Shared service-to-service authentication token (`SERVICE_TOKEN` env var).
+        Verified constant-time by the `VerifyServiceToken` middleware in every service.
+        A missing or incorrect value yields **HTTP 401**.
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid X-Service-Token header
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: Invalid or missing service token.
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: No query results for model.
+
+  schemas:
+
+    # ── Shared ───────────────────────────────────────────────────────────────
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Invalid or missing service token.
+
+    # ── auth-service ─────────────────────────────────────────────────────────
+    SettingsPayload:
+      type: object
+      description: >
+        Platform-wide business identity managed from the Operations Hub.
+        Keys always resolve — defaults are used until an administrator overrides them.
+      properties:
+        business_name:
+          type: string
+          example: DriveNow Car Rental Services
+        business_email:
+          type: string
+          format: email
+          example: hello@drivenow.test
+        business_phone:
+          type: string
+          example: "+63 34 000 0000"
+        business_address:
+          type: string
+          example: Brgy. Alijis, Bacolod City, Negros Occidental, Philippines
+        business_website:
+          type: string
+          format: uri
+          example: https://drivenow.test
+        business_description:
+          type: string
+          example: Reliable, affordable vehicle rentals for Bacolod City and nearby areas.
+        logo_url:
+          type: string
+          format: uri
+          nullable: true
+          example: null
+        favicon_url:
+          type: string
+          format: uri
+          nullable: true
+          example: null
+        currency:
+          type: string
+          example: PHP
+        currency_symbol:
+          type: string
+          example: "PHP "
+        timezone:
+          type: string
+          example: Asia/Manila
+
+    # ── fleet-service ────────────────────────────────────────────────────────
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          description: Computed display name (make + model + year)
+          example: Toyota Fortuner 2023
+        make:
+          type: string
+          example: Toyota
+        model:
+          type: string
+          example: Fortuner
+        year:
+          type: integer
+          example: 2023
+        plate_number:
+          type: string
+          example: ABC-1234
+        category:
+          type: string
+          enum: [sedan, hatchback, suv, van, pickup]
+          example: suv
+        category_label:
+          type: string
+          example: SUV
+        status:
+          type: string
+          enum: [available, reserved, rented, maintenance, inactive]
+          example: available
+        status_label:
+          type: string
+          example: Available
+        branch:
+          type: string
+          example: Bacolod Main
+        daily_rate:
+          type: number
+          format: float
+          example: 2500.00
+        seats:
+          type: integer
+          example: 7
+        transmission:
+          type: string
+          example: Automatic
+        fuel_type:
+          type: string
+          example: Gasoline
+        color:
+          type: string
+          nullable: true
+          example: Silver
+        mileage:
+          type: integer
+          example: 25000
+        image_url:
+          type: string
+          format: uri
+          nullable: true
+          example: null
+        notes:
+          type: string
+          nullable: true
+          example: null
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-01-10T08:00:00+08:00"
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-05-20T14:30:00+08:00"
+
+    # ── rental-service ───────────────────────────────────────────────────────
+    Rental:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        reference:
+          type: string
+          description: Unique rental reference — format RNT-XXXXXXXX
+          example: RNT-A1B2C3D4
+        customer_name:
+          type: string
+          example: Juan dela Cruz
+        customer_email:
+          type: string
+          format: email
+          example: juan@example.com
+        customer_phone:
+          type: string
+          example: "+639171234567"
+        vehicle_id:
+          type: integer
+          description: >
+            Logical reference to fleet-service vehicle ID.
+            Stored as a value snapshot — no cross-service foreign key.
+          example: 3
+        vehicle_name:
+          type: string
+          description: Snapshot of vehicle name captured at time of rental
+          example: Toyota Fortuner 2023
+        vehicle_plate:
+          type: string
+          example: ABC-1234
+        pickup_branch:
+          type: string
+          example: Bacolod Main
+        pickup_date:
+          type: string
+          format: date
+          example: "2026-06-05"
+        return_date:
+          type: string
+          format: date
+          example: "2026-06-08"
+        days:
+          type: integer
+          example: 3
+        daily_rate:
+          type: number
+          format: float
+          example: 2500.00
+        subtotal:
+          type: number
+          format: float
+          example: 7500.00
+        total:
+          type: number
+          format: float
+          example: 7500.00
+        status:
+          type: string
+          enum: [pending, approved, active, completed, cancelled]
+          example: approved
+        status_label:
+          type: string
+          example: Approved
+        notes:
+          type: string
+          nullable: true
+          example: null
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-06-04T09:15:00+08:00"
+        released_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        returned_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        cancelled_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-06-03T10:00:00+08:00"
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-06-04T09:15:00+08:00"
+
+    # ── crm-service ──────────────────────────────────────────────────────────
+    CustomerActivity:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12
+        type:
+          type: string
+          example: rental_created
+        description:
+          type: string
+          example: Rental RNT-A1B2C3D4 created.
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-06-03T10:00:00+08:00"
+
+    CustomerFeedback:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 4
+        comment:
+          type: string
+          nullable: true
+          example: Great service, very clean vehicle.
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-06-09T11:00:00+08:00"
+
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Maria Santos
+        email:
+          type: string
+          format: email
+          example: maria@example.com
+        phone:
+          type: string
+          example: "+639181234567"
+        address:
+          type: string
+          nullable: true
+          example: 123 Main St
+        city:
+          type: string
+          nullable: true
+          example: Bacolod City
+        status:
+          type: string
+          enum: [active, inactive, blacklisted]
+          example: active
+        status_label:
+          type: string
+          example: Active
+        tier:
+          type: string
+          enum: [regular, silver, gold, platinum]
+          example: gold
+        tier_label:
+          type: string
+          example: Gold
+        loyalty_points:
+          type: integer
+          example: 1250
+        total_rentals:
+          type: integer
+          example: 8
+        total_spent:
+          type: number
+          format: float
+          example: 20000.00
+        blacklist_reason:
+          type: string
+          nullable: true
+          example: null
+        joined_at:
+          type: string
+          format: date
+          nullable: true
+          example: "2024-01-15"
+        notes:
+          type: string
+          nullable: true
+          example: null
+        activities:
+          type: array
+          description: Loaded on the show endpoint only (whenLoaded)
+          items:
+            $ref: '#/components/schemas/CustomerActivity'
+        feedback:
+          type: array
+          description: Loaded on the show endpoint only (whenLoaded)
+          items:
+            $ref: '#/components/schemas/CustomerFeedback'
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-01-15T08:00:00+08:00"
+
+    # ── billing-service ──────────────────────────────────────────────────────
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 7
+        method:
+          type: string
+          enum: [cash, gcash, card]
+          example: gcash
+        method_label:
+          type: string
+          example: GCash
+        amount:
+          type: number
+          format: float
+          example: 3750.00
+        reference:
+          type: string
+          nullable: true
+          example: GCX-20260605-001
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-06-05T14:00:00+08:00"
+
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        invoice_number:
+          type: string
+          example: INV-20260601-0001
+        customer_name:
+          type: string
+          example: Juan dela Cruz
+        customer_email:
+          type: string
+          format: email
+          example: juan@example.com
+        rental_reference:
+          type: string
+          description: >
+            Snapshot reference to rental-service.
+            Stored as a value — no cross-service foreign key.
+          example: RNT-A1B2C3D4
+        subtotal:
+          type: number
+          format: float
+          example: 7500.00
+        penalty:
+          type: number
+          format: float
+          example: 500.00
+        discount:
+          type: number
+          format: float
+          example: 0.00
+        total:
+          type: number
+          format: float
+          example: 8000.00
+        amount_paid:
+          type: number
+          format: float
+          example: 4000.00
+        balance:
+          type: number
+          format: float
+          example: 4000.00
+        status:
+          type: string
+          enum: [unpaid, partial, paid, overdue, refunded]
+          example: partial
+        status_label:
+          type: string
+          example: Partial
+        due_date:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-06-15"
+        issued_at:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-06-08"
+        notes:
+          type: string
+          nullable: true
+          example: null
+        payments:
+          type: array
+          description: Loaded on the show endpoint only (whenLoaded)
+          items:
+            $ref: '#/components/schemas/Payment'
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-06-08T10:00:00+08:00"
+
+    # ── maintenance-service ──────────────────────────────────────────────────
+    MaintenanceRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        reference:
+          type: string
+          example: MNT-00000001
+        vehicle_id:
+          type: integer
+          description: >
+            Logical reference to fleet-service vehicle ID.
+            Stored as a value snapshot — no cross-service foreign key.
+          example: 3
+        vehicle_name:
+          type: string
+          description: Snapshot of vehicle name captured at record creation
+          example: Toyota Fortuner 2023
+        vehicle_plate:
+          type: string
+          example: ABC-1234
+        type:
+          type: string
+          enum: [inspection, repair, scheduled, damage]
+          example: repair
+        type_label:
+          type: string
+          example: Repair
+        status:
+          type: string
+          enum: [scheduled, in_progress, completed, cancelled]
+          example: completed
+        status_label:
+          type: string
+          example: Completed
+        severity:
+          type: string
+          enum: [low, medium, high]
+          example: medium
+        severity_label:
+          type: string
+          example: Medium
+        title:
+          type: string
+          example: Oil change and brake inspection
+        description:
+          type: string
+          nullable: true
+          example: Replaced engine oil and inspected brake pads.
+        cost:
+          type: number
+          format: float
+          example: 2500.00
+        odometer:
+          type: integer
+          nullable: true
+          example: 25000
+        scheduled_date:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-05-20"
+        completed_date:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-05-21"
+        notes:
+          type: string
+          nullable: true
+          example: null
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-05-19T08:00:00+08:00"
+
+    # ── analytics-service ────────────────────────────────────────────────────
+    AnalyticsKpis:
+      type: object
+      description: >
+        Headline KPIs aggregated from fleet, rental, CRM and maintenance services.
+        Results are cached for ~2 minutes. When a source service is unreachable,
+        representative fallback values are used so the dashboard never shows blank.
+      properties:
+        revenue:
+          type: number
+          format: float
+          description: Total revenue from active and completed rentals (PHP)
+          example: 42500.0
+        rentals:
+          type: integer
+          description: Total count of all rental records across all statuses
+          example: 350
+        utilization:
+          type: integer
+          description: Fleet utilization percentage — (rented + reserved) / total fleet * 100
+          example: 68
+        active_customers:
+          type: integer
+          description: Count of customers with status = active
+          example: 215
+        avg_rental_value:
+          type: integer
+          description: Average revenue per earning rental, rounded to nearest PHP
+          example: 121
+        maintenance_cost:
+          type: number
+          format: float
+          description: Total cost recorded across all maintenance records (PHP)
+          example: 18400.0
+
+# ============================================================================
+# Paths
+# ============================================================================
+paths:
+
+  # ─── auth-service (:8001) ──────────────────────────────────────────────────
+  /api/v1/settings:
+    get:
+      operationId: getSettings
+      summary: Get global business settings
+      description: >
+        Returns the platform-wide business identity (name, logo, contact details,
+        currency, timezone) stored in the auth-service `settings` table.
+        Every sibling service calls this on page load and caches the result for
+        ~5 minutes. Responds with built-in defaults if the table is empty so the
+        platform is always branded even before an administrator configures it.
+      tags:
+        - Settings
+      servers:
+        - url: http://localhost:8001
+          description: auth-service (direct)
+      responses:
+        '200':
+          description: Current settings payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SettingsPayload'
+              example:
+                data:
+                  business_name: DriveNow Car Rental Services
+                  business_email: hello@drivenow.test
+                  business_phone: "+63 34 000 0000"
+                  business_address: Brgy. Alijis, Bacolod City, Negros Occidental, Philippines
+                  business_website: https://drivenow.test
+                  business_description: Reliable, affordable vehicle rentals for Bacolod City and nearby areas.
+                  logo_url: null
+                  favicon_url: null
+                  currency: PHP
+                  currency_symbol: "PHP "
+                  timezone: Asia/Manila
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ─── fleet-service (:8002) ────────────────────────────────────────────────
+  /api/v1/vehicles:
+    get:
+      operationId: listVehicles
+      summary: List vehicles
+      description: >
+        Returns the full vehicle inventory ordered by make. Supports optional
+        filtering by `status` and/or `category`. Used by rental-service to
+        populate the vehicle picker, by maintenance-service for the vehicle
+        selector, and by client-service for the public catalogue.
+      tags:
+        - Fleet
+      servers:
+        - url: http://localhost:8002
+          description: fleet-service (direct)
+      parameters:
+        - name: status
+          in: query
+          description: Filter by vehicle status
+          required: false
+          schema:
+            type: string
+            enum: [available, reserved, rented, maintenance, inactive]
+          example: available
+        - name: category
+          in: query
+          description: Filter by vehicle category
+          required: false
+          schema:
+            type: string
+            enum: [sedan, hatchback, suv, van, pickup]
+          example: suv
+      responses:
+        '200':
+          description: Collection of vehicles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vehicle'
+              example:
+                data:
+                  - id: 1
+                    name: Toyota Fortuner 2023
+                    make: Toyota
+                    model: Fortuner
+                    year: 2023
+                    plate_number: ABC-1234
+                    category: suv
+                    category_label: SUV
+                    status: available
+                    status_label: Available
+                    branch: Bacolod Main
+                    daily_rate: 2500.00
+                    seats: 7
+                    transmission: Automatic
+                    fuel_type: Gasoline
+                    color: Silver
+                    mileage: 25000
+                    image_url: null
+                    notes: null
+                    created_at: "2025-01-10T08:00:00+08:00"
+                    updated_at: "2026-05-20T14:30:00+08:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/vehicles/{vehicle}:
+    get:
+      operationId: getVehicle
+      summary: Get a single vehicle
+      description: Returns a single vehicle by its ID.
+      tags:
+        - Fleet
+      servers:
+        - url: http://localhost:8002
+          description: fleet-service (direct)
+      parameters:
+        - name: vehicle
+          in: path
+          required: true
+          description: Vehicle ID (integer primary key)
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Single vehicle
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Vehicle'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ─── rental-service (:8003) ───────────────────────────────────────────────
+  /api/v1/rentals:
+    get:
+      operationId: listRentals
+      summary: List rentals
+      description: >
+        Returns all rental records ordered by ID descending. Supports optional
+        filtering by `status`. Consumed by crm-service (customer rental history)
+        and analytics-service (KPI aggregation).
+      tags:
+        - Rentals
+      servers:
+        - url: http://localhost:8003
+          description: rental-service (direct)
+      parameters:
+        - name: status
+          in: query
+          description: Filter by rental status
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, active, completed, cancelled]
+          example: active
+      responses:
+        '200':
+          description: Collection of rentals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Rental'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/rentals/{rental}:
+    get:
+      operationId: getRental
+      summary: Get a single rental
+      description: Returns a single rental by its ID.
+      tags:
+        - Rentals
+      servers:
+        - url: http://localhost:8003
+          description: rental-service (direct)
+      parameters:
+        - name: rental
+          in: path
+          required: true
+          description: Rental ID (integer primary key)
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Single rental
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Rental'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ─── crm-service (:8004) ──────────────────────────────────────────────────
+  /api/v1/customers:
+    get:
+      operationId: listCustomers
+      summary: List customers
+      description: >
+        Returns all customer profiles ordered by name. Supports optional
+        filtering by `status`. Consumed by analytics-service.
+      tags:
+        - Customers
+      servers:
+        - url: http://localhost:8004
+          description: crm-service (direct)
+      parameters:
+        - name: status
+          in: query
+          description: Filter by customer status
+          required: false
+          schema:
+            type: string
+            enum: [active, inactive, blacklisted]
+          example: active
+      responses:
+        '200':
+          description: Collection of customers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Customer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/customers/{customer}:
+    get:
+      operationId: getCustomer
+      summary: Get a single customer
+      description: >
+        Returns a single customer by ID with the `activities` and `feedback`
+        relationships loaded.
+      tags:
+        - Customers
+      servers:
+        - url: http://localhost:8004
+          description: crm-service (direct)
+      parameters:
+        - name: customer
+          in: path
+          required: true
+          description: Customer ID (integer primary key)
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Single customer with activities and feedback loaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Customer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ─── billing-service (:8005) ──────────────────────────────────────────────
+  /api/v1/invoices:
+    get:
+      operationId: listInvoices
+      summary: List invoices
+      description: >
+        Returns all invoices ordered by ID descending. Supports optional
+        filtering by `status`.
+      tags:
+        - Billing
+      servers:
+        - url: http://localhost:8005
+          description: billing-service (direct)
+      parameters:
+        - name: status
+          in: query
+          description: Filter by invoice status
+          required: false
+          schema:
+            type: string
+            enum: [unpaid, partial, paid, overdue, refunded]
+          example: unpaid
+      responses:
+        '200':
+          description: Collection of invoices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Invoice'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/invoices/{invoice}:
+    get:
+      operationId: getInvoice
+      summary: Get a single invoice
+      description: >
+        Returns a single invoice by ID with its `payments` relationship loaded.
+      tags:
+        - Billing
+      servers:
+        - url: http://localhost:8005
+          description: billing-service (direct)
+      parameters:
+        - name: invoice
+          in: path
+          required: true
+          description: Invoice ID (integer primary key)
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Single invoice with payments loaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Invoice'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ─── maintenance-service (:8006) ──────────────────────────────────────────
+  /api/v1/maintenance:
+    get:
+      operationId: listMaintenance
+      summary: List maintenance records
+      description: >
+        Returns all maintenance records ordered by ID descending. Supports optional
+        filtering by `status` and/or `vehicle_id`. Consumed by analytics-service.
+      tags:
+        - Maintenance
+      servers:
+        - url: http://localhost:8006
+          description: maintenance-service (direct)
+      parameters:
+        - name: status
+          in: query
+          description: Filter by maintenance status
+          required: false
+          schema:
+            type: string
+            enum: [scheduled, in_progress, completed, cancelled]
+          example: scheduled
+        - name: vehicle_id
+          in: query
+          description: Filter records for a specific vehicle
+          required: false
+          schema:
+            type: integer
+          example: 3
+      responses:
+        '200':
+          description: Collection of maintenance records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MaintenanceRecord'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/maintenance/{record}:
+    get:
+      operationId: getMaintenanceRecord
+      summary: Get a single maintenance record
+      description: Returns a single maintenance record by its ID.
+      tags:
+        - Maintenance
+      servers:
+        - url: http://localhost:8006
+          description: maintenance-service (direct)
+      parameters:
+        - name: record
+          in: path
+          required: true
+          description: Maintenance record ID (integer primary key)
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Single maintenance record
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/MaintenanceRecord'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ─── analytics-service (:8007) ────────────────────────────────────────────
+  /api/v1/summary:
+    get:
+      operationId: getAnalyticsSummary
+      summary: Get headline KPIs
+      description: >
+        Returns aggregated KPIs derived by concurrently querying fleet, rental,
+        CRM and maintenance services via their `/api/v1/` endpoints. Results are
+        cached for ~2 minutes. When a source service is unreachable, representative
+        fallback values are used so the dashboard never goes blank — the full
+        dashboard payload (not returned here) additionally exposes a
+        `meta.degraded` array naming which services were offline.
+      tags:
+        - Analytics
+      servers:
+        - url: http://localhost:8007
+          description: analytics-service (direct)
+      responses:
+        '200':
+          description: Headline KPI summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AnalyticsKpis'
+              example:
+                data:
+                  revenue: 42500.0
+                  rentals: 350
+                  utilization: 68
+                  active_customers: 215
+                  avg_rental_value: 121
+                  maintenance_cost: 18400.0
+        '401':
+          $ref: '#/components/responses/Unauthorized'

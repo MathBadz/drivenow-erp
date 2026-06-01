@@ -17,8 +17,6 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    /** Resolve auth users from the shared auth-service database (SSO). */
-    protected $connection = 'pgsql_auth';
 
     /**
      * Get the attributes that should be cast.

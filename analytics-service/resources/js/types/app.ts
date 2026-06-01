@@ -36,6 +36,9 @@ export type Utilization = {
 export type Retention = { percent: number; returning: number; new: number };
 export type PaymentMix = { cash: number; gcash: number; card: number };
 
+/** Data freshness: which sibling services were unreachable on the last build. */
+export type AnalyticsMeta = { live: boolean; degraded: string[] };
+
 export type ReportRow = {
     date: string;
     rentals: number;

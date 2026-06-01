@@ -7,6 +7,8 @@ import {
     ChevronLeft,
     ChevronRight,
     Eye,
+    ImageUp,
+    UploadCloud,
     KeyRound,
     LayoutGrid,
     Pencil,
@@ -97,13 +99,36 @@ const form = useForm({
     color: '',
     mileage: 0,
     image_url: '',
+    image: null as File | null,
+    remove_image: false,
     notes: '',
 });
+
+const imageInput = ref<HTMLInputElement | null>(null);
+const imagePreview = ref<string | null>(null);
+// Tracks image URLs that failed to load so we fall back to the icon placeholder.
+const failedImages = ref(new Set<string>());
+
+function onImageChange(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0] ?? null;
+    form.image = file;
+    form.remove_image = false;
+    imagePreview.value = file ? URL.createObjectURL(file) : form.image_url || null;
+}
+
+function removeImage() {
+    form.image = null;
+    form.remove_image = true;
+    imagePreview.value = null;
+    if (imageInput.value) imageInput.value.value = '';
+}
 
 function openCreate() {
     editingId.value = null;
     form.reset();
     form.clearErrors();
+    imagePreview.value = null;
+    if (imageInput.value) imageInput.value.value = '';
     showModal.value = true;
 }
 
@@ -124,6 +149,10 @@ function openEdit(v: Vehicle) {
     form.color = v.color ?? '';
     form.mileage = v.mileage;
     form.image_url = v.image_url ?? '';
+    form.image = null;
+    form.remove_image = false;
+    imagePreview.value = v.image_url || null;
+    if (imageInput.value) imageInput.value.value = '';
     form.notes = v.notes ?? '';
     showModal.value = true;
 }
@@ -135,6 +164,7 @@ function closeModal() {
 function submit() {
     const options = {
         preserveScroll: true,
+        forceFormData: true,
         onSuccess: () => closeModal(),
     };
     if (editingId.value) {
@@ -163,7 +193,7 @@ const fuels = ['Gasoline', 'Diesel', 'Electric', 'Hybrid'];
     <Head title="Vehicles" />
 
     <AppLayout :breadcrumbs="[{ title: 'Vehicles', href: '/vehicles' }]">
-        <div class="flex h-full flex-1 flex-col gap-6 p-6">
+        <div class="flex min-h-full flex-1 flex-col gap-6 p-6">
             <!-- Header -->
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -218,12 +248,12 @@ const fuels = ['Gasoline', 'Diesel', 'Electric', 'Hybrid'];
                             v-model="search"
                             type="text"
                             placeholder="Search make, model or plate…"
-                            class="h-8 w-full rounded-lg border border-input bg-background pr-3 pl-9 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                            class="h-9 w-full rounded-lg border border-input bg-background pr-3 pl-9 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-400 focus:outline-none"
                         />
                     </div>
                     <select
                         v-model="categoryFilter"
-                        class="h-8 rounded-lg border border-input bg-background px-3 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                        class="h-9 rounded-lg border border-input bg-background px-3 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-400 focus:outline-none"
                     >
                         <option value="">All Categories</option>
                         <option v-for="opt in categoryOptions" :key="opt.value" :value="opt.value">
@@ -256,8 +286,9 @@ const fuels = ['Gasoline', 'Diesel', 'Electric', 'Hybrid'];
                             >
                                 <td class="px-5 py-3.5">
                                     <div class="flex items-center gap-3">
-                                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                                            <Car class="h-4 w-4 text-muted-foreground" />
+                                        <span class="flex h-10 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+                                            <img v-if="v.image_url && !failedImages.has(v.image_url)" :src="v.image_url" :alt="v.name" class="h-full w-full object-cover" @error="failedImages.add(v.image_url)" />
+                                            <Car v-else class="h-4 w-4 text-muted-foreground" />
                                         </span>
                                         <div class="min-w-0">
                                             <p class="truncate text-sm font-medium text-foreground">{{ v.name }}</p>
@@ -358,11 +389,11 @@ const fuels = ['Gasoline', 'Diesel', 'Electric', 'Hybrid'];
                 leave-to-class="opacity-0"
                 leave-active-class="transition duration-150"
             >
-                <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center">
+                <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @keydown.esc.window="closeModal">
                     <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="closeModal" />
-                    <div class="relative z-10 mx-4 w-full max-w-2xl rounded-2xl border border-border bg-card shadow-2xl">
+                    <div class="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="vehicle-modal-title">
                         <div class="flex items-center justify-between border-b border-border px-6 py-4">
-                            <h2 class="font-display font-semibold text-foreground">
+                            <h2 id="vehicle-modal-title" class="font-display font-semibold text-foreground">
                                 {{ editingId ? 'Edit Vehicle' : 'Add Vehicle' }}
                             </h2>
                             <button
@@ -438,6 +469,28 @@ const fuels = ['Gasoline', 'Diesel', 'Electric', 'Hybrid'];
                                     <input v-model.number="form.mileage" type="number" class="h-9 rounded-lg border border-input bg-background px-3 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-400 focus:outline-none" />
                                 </div>
                                 <div class="grid gap-1.5 sm:col-span-2">
+                                    <label class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Vehicle Photo</label>
+                                    <div class="flex items-center gap-4">
+                                        <div class="flex h-20 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/40">
+                                            <img v-if="imagePreview" :src="imagePreview" alt="Vehicle preview" class="h-full w-full object-cover" />
+                                            <ImageUp v-else class="h-7 w-7 text-muted-foreground/40" />
+                                        </div>
+                                        <div class="flex-1">
+                                            <input ref="imageInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" @change="onImageChange" />
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <button type="button" class="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted active:scale-95" @click="imageInput?.click()">
+                                                    <UploadCloud class="h-4 w-4" /> {{ imagePreview ? 'Change photo' : 'Upload photo' }}
+                                                </button>
+                                                <button v-if="imagePreview" type="button" class="inline-flex h-9 items-center gap-2 rounded-lg border border-red-200 px-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 active:scale-95 dark:border-red-800/50 dark:hover:bg-red-900/10" @click="removeImage">
+                                                    <Trash2 class="h-4 w-4" /> Remove
+                                                </button>
+                                            </div>
+                                            <p class="mt-1.5 text-[11px] text-muted-foreground">PNG, JPG or WebP up to 2 MB.</p>
+                                            <p v-if="form.errors.image" class="mt-1 text-[11px] text-red-500">{{ form.errors.image }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="grid gap-1.5 sm:col-span-2">
                                     <label class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Notes</label>
                                     <textarea v-model="form.notes" rows="2" class="rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-400 focus:outline-none" />
                                 </div>
@@ -465,9 +518,9 @@ const fuels = ['Gasoline', 'Diesel', 'Electric', 'Hybrid'];
                 leave-to-class="opacity-0"
                 leave-active-class="transition duration-150"
             >
-                <div v-if="deleteTarget" class="fixed inset-0 z-50 flex items-center justify-center">
+                <div v-if="deleteTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4" @keydown.esc.window="deleteTarget = null">
                     <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="deleteTarget = null" />
-                    <div class="relative z-10 mx-4 w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl">
+                    <div class="relative z-10 mx-4 w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl" role="dialog" aria-modal="true">
                         <div class="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
                             <Trash2 class="h-5 w-5 text-red-600 dark:text-red-400" />
                         </div>

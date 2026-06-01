@@ -58,7 +58,7 @@ function printReceipt() {
     <Head :title="inv.invoice_number" />
 
     <AppLayout :breadcrumbs="[{ title: 'Invoices', href: '/invoices' }, { title: inv.invoice_number, href: `/invoices/${inv.id}` }]">
-        <div class="mx-auto flex h-full w-full max-w-3xl flex-1 flex-col gap-6 p-6">
+        <div class="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col gap-6 p-6">
             <div class="flex items-center justify-between print:hidden">
                 <Link href="/invoices" class="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
                     <ArrowLeft class="h-4 w-4" /> Back to invoices

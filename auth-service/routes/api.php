@@ -1,8 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\SettingsController;
+use App\Http\Middleware\VerifyServiceToken;
 use Illuminate\Support\Facades\Route;
 
-// Public branding/configuration endpoint consumed by the other microservices.
-// auth-service is the single source of truth (see SPECIALIZED_INSTRUCTIONS).
-Route::get('settings', SettingsController::class)->name('api.settings');
+// Versioned, service-token-protected branding/configuration endpoint.
+// auth-service is the single source of truth.
+Route::prefix('v1')->middleware(VerifyServiceToken::class)->group(function () {
+    Route::get('settings', SettingsController::class)->name('api.v1.settings');
+});

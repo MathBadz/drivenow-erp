@@ -49,7 +49,7 @@ const statusBadge = (s: string) =>
     <Head title="Maintenance Dashboard" />
 
     <AppLayout :breadcrumbs="[{ title: 'Dashboard', href: '/dashboard' }]">
-        <div class="flex h-full flex-1 flex-col gap-6 p-6">
+        <div class="flex min-h-full flex-1 flex-col gap-6 p-6">
             <div class="grid gap-4 lg:grid-cols-3">
                 <div class="relative overflow-hidden rounded-2xl border border-border bg-[#0f172a] p-6 text-white shadow-card lg:col-span-2">
                     <div class="pointer-events-none absolute -top-16 -right-10 h-48 w-48 rounded-full bg-amber-500/20 blur-3xl" />

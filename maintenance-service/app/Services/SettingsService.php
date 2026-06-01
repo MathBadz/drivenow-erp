@@ -44,7 +44,7 @@ class SettingsService
             }
 
             try {
-                $response = Http::timeout(2)->acceptJson()->get("{$base}/api/settings");
+                $response = Http::timeout(2)->acceptJson()->withHeaders(['X-Service-Token' => (string) config('services.service_token')])->get("{$base}/api/v1/settings");
 
                 if ($response->successful()) {
                     return array_merge(self::DEFAULTS, $response->json('data') ?? []);

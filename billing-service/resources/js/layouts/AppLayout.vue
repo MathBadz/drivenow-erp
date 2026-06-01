@@ -5,7 +5,6 @@ import { computed, onMounted, ref } from 'vue';
 import { Toaster } from 'vue-sonner';
 import ErpSidebar from '@/components/ErpSidebar.vue';
 import { useAppearance } from '@/composables/useAppearance';
-import type { SystemSettings } from '@/types';
 
 type Breadcrumb = { title: string; href: string };
 
@@ -13,8 +12,14 @@ const { breadcrumbs = [] } = defineProps<{
     breadcrumbs?: Breadcrumb[];
 }>();
 
-const page = usePage<{ settings: SystemSettings; sidebarOpen?: boolean }>();
-const settings = computed(() => page.props.settings);
+const page = usePage<{ sidebarOpen?: boolean }>();
+const currentKey = computed(() => {
+    try {
+        return new URL(page.url, 'http://localhost').pathname;
+    } catch {
+        return page.url;
+    }
+});
 
 const open = ref(page.props.sidebarOpen ?? true);
 const { resolvedAppearance, updateAppearance } = useAppearance();
@@ -54,11 +59,11 @@ onMounted(() => {
         </Transition>
 
         <div class="flex min-w-0 flex-1 flex-col">
-            <header class="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-card/80 px-4 backdrop-blur-sm">
+            <header class="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-card/80 px-4 backdrop-blur-sm">
                 <button
                     type="button"
                     title="Toggle sidebar"
-                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-amber-300 hover:text-amber-600"
+                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-all hover:border-amber-300 hover:text-amber-600 active:scale-95"
                     @click="toggleSidebar"
                 >
                     <PanelLeft class="h-4 w-4" />
@@ -78,24 +83,31 @@ onMounted(() => {
                     </template>
                 </nav>
 
-                <div class="ml-auto flex items-center gap-3">
+                <div class="ml-auto flex items-center gap-2">
                     <button
                         type="button"
                         title="Toggle theme"
-                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-amber-300 hover:text-amber-600"
+                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-all hover:border-amber-300 hover:text-amber-600 active:scale-95"
                         @click="toggleTheme"
                     >
                         <Sun v-if="resolvedAppearance === 'dark'" class="h-4 w-4" />
                         <Moon v-else class="h-4 w-4" />
                     </button>
-                    <div class="hidden items-center gap-2 border-l border-border pl-3 sm:flex">
-                        <span class="text-sm font-medium text-foreground">{{ settings?.business_name }}</span>
-                    </div>
                 </div>
             </header>
 
             <main class="min-w-0 flex-1 overflow-y-auto">
-                <slot />
+                <Transition
+                    mode="out-in"
+                    enter-active-class="transition duration-300 ease-out"
+                    enter-from-class="opacity-0 translate-y-1.5"
+                    leave-active-class="transition duration-100 ease-in"
+                    leave-to-class="opacity-0"
+                >
+                    <div :key="currentKey">
+                        <slot />
+                    </div>
+                </Transition>
             </main>
         </div>
 

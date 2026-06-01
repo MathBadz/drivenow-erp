@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import {
     BarChart3,
     Car,
@@ -13,15 +13,21 @@ import {
     Wrench,
     type LucideIcon,
 } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { SystemSettings } from '@/types';
 
 defineProps<{ open: boolean }>();
 
+const confirmingLogout = ref(false);
+
+function confirmLogout(): void {
+    router.post('/logout');
+}
+
 type NavLink = { label: string; href: string; icon: LucideIcon };
 type SidebarUser = { name?: string; role?: string; role_label?: string };
 
-const page = usePage<{ settings: SystemSettings; auth: { user: SidebarUser | null } }>();
+const page = usePage<{ settings: SystemSettings; auth: { user: SidebarUser | null }; serviceUrls: Record<string, string> }>();
 const settings = computed(() => page.props.settings);
 const user = computed(() => page.props.auth?.user ?? null);
 
@@ -48,15 +54,21 @@ const sections: { title: string; links: NavLink[] }[] = [
     { title: 'Main', links: [{ label: 'Dashboard', href: '/dashboard', icon: Gauge }] },
     { title: 'Rentals', links: [{ label: 'Reservations', href: '/reservations', icon: CalendarCheck }] },
 ];
-const serviceNav: NavLink[] = [
-    { label: 'Operations Hub', href: 'http://localhost:8001', icon: LayoutGrid },
-    { label: 'Fleet', href: 'http://localhost:8002', icon: Car },
-    { label: 'Customers', href: 'http://localhost:8004', icon: UsersRound },
-    { label: 'Billing', href: 'http://localhost:8005', icon: Receipt },
-    { label: 'Maintenance', href: 'http://localhost:8006', icon: Wrench },
-    { label: 'Analytics', href: 'http://localhost:8007', icon: BarChart3 },
-    { label: 'Client Portal', href: 'http://localhost:8008', icon: Globe },
-];
+// Sibling links are config-driven (page.props.serviceUrls ← config('services.public'))
+// so they resolve correctly behind a gateway / public host, not just localhost.
+const serviceNav = computed<NavLink[]>(() =>
+    [
+        { label: 'Operations Hub', key: 'auth', icon: LayoutGrid },
+        { label: 'Fleet', key: 'fleet', icon: Car },
+        { label: 'Customers', key: 'crm', icon: UsersRound },
+        { label: 'Billing', key: 'billing', icon: Receipt },
+        { label: 'Maintenance', key: 'maintenance', icon: Wrench },
+        { label: 'Analytics', key: 'analytics', icon: BarChart3 },
+        { label: 'Client Portal', key: 'client', icon: Globe },
+    ]
+        .map((s) => ({ label: s.label, href: page.props.serviceUrls?.[s.key] ?? '', icon: s.icon }))
+        .filter((s) => s.href !== ''),
+);
 </script>
 
 <template>
@@ -65,7 +77,8 @@ const serviceNav: NavLink[] = [
         :class="[open ? 'translate-x-0' : '-translate-x-full', open ? 'w-64 lg:w-64' : 'w-64 lg:w-[3.5rem]']"
     >
         <div class="flex h-16 shrink-0 items-center gap-2.5 border-b border-slate-700/60 px-3">
-            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-amber-950 shadow-sm">
+            <img v-if="settings?.logo_url" :src="settings.logo_url" alt="logo" class="h-9 w-9 shrink-0 rounded-lg object-contain" />
+            <div v-else class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-amber-950 shadow-sm">
                 <CalendarCheck class="h-5 w-5" />
             </div>
             <div v-show="open" class="min-w-0 leading-tight">
@@ -116,17 +129,37 @@ const serviceNav: NavLink[] = [
                     <span class="block truncate text-sm font-medium text-white">{{ user?.name ?? 'Guest' }}</span>
                     <span class="block truncate text-[11px] text-slate-400">{{ roleLabel }}</span>
                 </span>
-                <Link
+                <button
                     v-show="open"
-                    href="/logout"
-                    method="post"
-                    as="button"
+                    type="button"
                     title="Sign out"
                     class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-700/60 hover:text-white"
+                    @click="confirmingLogout = true"
                 >
                     <LogOut class="h-4 w-4" />
-                </Link>
+                </button>
             </div>
         </div>
+        <!-- Sign-out confirmation -->
+        <Teleport to="body">
+            <Transition enter-active-class="transition ease-out duration-150" enter-from-class="opacity-0" leave-active-class="transition ease-in duration-100" leave-to-class="opacity-0">
+                <div v-if="confirmingLogout" class="fixed inset-0 z-[60] flex items-center justify-center p-4" @keydown.esc.window="confirmingLogout = false">
+                    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="confirmingLogout = false" />
+                    <div class="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl" role="dialog" aria-modal="true">
+                        <div class="flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                            <LogOut class="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <h2 class="font-display mt-4 text-base font-semibold text-foreground">Sign out?</h2>
+                        <p class="mt-1 text-sm text-muted-foreground">You'll need to sign in again to access the platform.</p>
+                        <div class="mt-5 flex items-center justify-end gap-3">
+                            <button type="button" class="inline-flex h-9 items-center rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted" @click="confirmingLogout = false">Cancel</button>
+                            <button type="button" class="inline-flex h-9 items-center gap-2 rounded-lg bg-amber-500 px-4 text-sm font-semibold text-amber-950 transition-colors hover:bg-amber-400" @click="confirmLogout">
+                                <LogOut class="h-4 w-4" /> Sign out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
     </aside>
 </template>

@@ -24,6 +24,9 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
+
+            // Browser-facing sibling URLs for cross-service nav (config-driven).
+            'serviceUrls' => config('services.public'),
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),

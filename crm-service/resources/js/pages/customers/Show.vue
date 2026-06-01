@@ -64,7 +64,7 @@ const kpis = computed(() => [
     <Head :title="c.name" />
 
     <AppLayout :breadcrumbs="[{ title: 'Customers', href: '/customers' }, { title: c.name, href: `/customers/${c.id}` }]">
-        <div class="mx-auto flex h-full w-full max-w-5xl flex-1 flex-col gap-6 p-6">
+        <div class="mx-auto flex min-h-full w-full max-w-5xl flex-1 flex-col gap-6 p-6">
             <Link href="/customers" class="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
                 <ArrowLeft class="h-4 w-4" /> Back to customers
             </Link>

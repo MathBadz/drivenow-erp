@@ -10,6 +10,7 @@ import {
     Settings2,
     Users,
 } from 'lucide-vue-next';
+import { ref } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { formatCurrency, formatDate, formatNumber } from '@/lib/format';
 import type { Vehicle } from '@/types';
@@ -17,6 +18,7 @@ import type { Vehicle } from '@/types';
 const props = defineProps<{ vehicle: { data: Vehicle } }>();
 
 const v = props.vehicle.data;
+const heroImgError = ref(false);
 
 const badgeClass =
     ({
@@ -47,7 +49,7 @@ const specs = [
             { title: v.name, href: `/vehicles/${v.id}` },
         ]"
     >
-        <div class="mx-auto flex h-full w-full max-w-4xl flex-1 flex-col gap-6 p-6">
+        <div class="mx-auto flex min-h-full w-full max-w-4xl flex-1 flex-col gap-6 p-6">
             <Link href="/vehicles" class="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
                 <ArrowLeft class="h-4 w-4" />
                 Back to vehicles
@@ -55,9 +57,12 @@ const specs = [
 
             <!-- Header card -->
             <div class="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
-                <div class="relative h-40 bg-[#0f172a]">
-                    <div class="pointer-events-none absolute -top-10 right-10 h-40 w-40 rounded-full bg-amber-500/20 blur-3xl" />
-                    <Car class="absolute right-6 bottom-2 h-28 w-28 text-white/5" stroke-width="1" />
+                <div class="relative h-48 bg-[#0f172a]">
+                    <img v-if="v.image_url && !heroImgError" :src="v.image_url" :alt="v.name" class="h-full w-full object-cover" @error="heroImgError = true" />
+                    <template v-else>
+                        <div class="pointer-events-none absolute -top-10 right-10 h-40 w-40 rounded-full bg-amber-500/20 blur-3xl" />
+                        <Car class="absolute right-6 bottom-2 h-28 w-28 text-white/5" stroke-width="1" />
+                    </template>
                     <span class="badge absolute top-4 right-4" :class="badgeClass">{{ v.status_label }}</span>
                 </div>
                 <div class="flex flex-wrap items-end justify-between gap-4 p-6">
